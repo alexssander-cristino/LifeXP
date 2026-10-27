@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 15 11 22;
+    --foreground: 235 235 245;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-rpg-dark text-rpg-foreground antialiased;
+    background-color: #0f0b16;
+    color: #eaeaf3;
+  }
+
+  :root.dark, .dark {
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-rpg-panel border border-rpg-border rounded-xl shadow-sm;
+  }
+  .panel-hover {
+    @apply panel hover:border-rpg-purple/50 transition-colors duration-200;
+  }
+  .btn-rpg {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
+           bg-rpg-purple text-white hover:bg-rpg-purple/90 hover:shadow-[0_0_15px_rgba(139,92,246,0.4)]
+           focus:outline-none focus:ring-2 focus:ring-rpg-purple/50;
+  }
+  .btn-rpg-secondary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
+           bg-transparent border border-rpg-border text-rpg-foreground hover:bg-rpg-panel
+           focus:outline-none focus:ring-2 focus:ring-rpg-purple/50;
+  }
+  .input-rpg {
+    @apply w-full px-4 py-2.5 rounded-lg border border-rpg-border bg-rpg-dark text-rpg-foreground
+           focus:outline-none focus:ring-2 focus:ring-rpg-purple/50 focus:border-transparent;
+  }
+  .card-stat {
+    @apply panel p-4 rounded-xl;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

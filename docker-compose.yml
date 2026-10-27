@@ -1,0 +1,156 @@
+# LifeXP — Infraestrutura de desenvolvimento (Docker Compose)
+#
+# Serviços obrigatórios:
+#   db        — PostgreSQL primary (escritas e leitura por padrão)
+#   redis     — Cache, rate limiting e filas
+#   api       — Backend Node.js/Fastify
+#   web       — Frontend React/Vite
+#
+# Serviço opcional:
+#   db-replica — PostgreSQL réplica de leitura (ativar apenas quando necessário.
+#                NUNCA encaminhar gravações para a réplica. Consulte docs/deployment.md)
+#
+# Uso:
+#   docker compose up -d
+#   docker compose up -d db-replica   # ativa réplica de leitura (opcional)
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lifexp-db
+    environment:
+      POSTGRES_USER: lifexp
+      POSTGRES_PASSWORD: lifexp_password
+      POSTGRES_DB: lifexp
+    ports:
+      - "5438:5432"
+    volumes:
+      - lifexp_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lifexp -d lifexp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - lifexp
+
+  db-replica:
+    image: postgres:16-alpine
+    container_name: lifexp-db-replica
+    environment:
+      POSTGRES_USER: lifexp_reader
+      POSTGRES_PASSWORD: lifexp_password
+      POSTGRES_DB: lifexp
+    ports:
+      - "5433:5432"
+    volumes:
+      - lifexp_db_replica_data:/var/lib/postgresql/data
+    # Nota: streaming replication real requer configuração adicional no primary
+    # (wal_level=recovery, configuracao de usuario de replicacao, pg_hba.conf).
+    # Aqui o container serve como endpoint de leitura separado; a sincronizacao
+    # fisica deve ser configurada por DBA conforme volume de dados.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lifexp_reader -d lifexp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - lifexp
+    profiles:
+      - replica  # so inicia com: docker compose --profile replica up -d db-replica
+
+  redis:
+    image: redis:7-alpine
+    container_name: lifexp-redis
+    ports:
+      - "6388:6379"
+    volumes:
+      - lifexp_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - lifexp
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: lifexp-api
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - READ_DATABASE_URL=${READ_DATABASE_URL}
+      - ENABLE_READ_REPLICA=${ENABLE_READ_REPLICA:-false}
+      - REDIS_URL=${REDIS_URL}
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+      - API_BASE_URL=${API_BASE_URL}
+      - WEB_URL=${WEB_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - APP_SECRET=${APP_SECRET}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JWT_ACCESS_TTL_SECONDS=${JWT_ACCESS_TTL_SECONDS}
+      - JWT_REFRESH_TTL_DAYS=${JWT_REFRESH_TTL_DAYS}
+      - REFRESH_TOKEN_ROTATION=${REFRESH_TOKEN_ROTATION}
+      - SESSION_COOKIE_NAME=${SESSION_COOKIE_NAME}
+      - SESSION_COOKIE_DOMAIN=${SESSION_COOKIE_DOMAIN}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE}
+      - SESSION_COOKIE_SAME_SITE=${SESSION_COOKIE_SAME_SITE}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - EMAIL_ENABLED=${EMAIL_ENABLED}
+      - FCM_PROJECT_ID=${FCM_PROJECT_ID}
+      - APNS_KEY_ID=${APNS_KEY_ID}
+      - PUSH_ENABLED=${PUSH_ENABLED}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - SUBSCRIPTION_ENABLED=${SUBSCRIPTION_ENABLED}
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - "3333:3333"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lifexp
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: lifexp-web
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=5173
+      - VITE_API_BASE_URL=${API_BASE_URL}
+      - VITE_WEB_URL=${WEB_URL}
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - lifexp
+
+volumes:
+  lifexp_db_data:
+  lifexp_db_replica_data:
+  lifexp_redis_data:
+
+networks:
+  lifexp:
+    driver: bridge
