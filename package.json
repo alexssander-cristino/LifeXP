@@ -15,8 +15,8 @@
     "packages/contracts"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=apps/api & npm run dev --workspace=apps/web",
-    "build": "npm run build --workspaces",
+    "dev": "npm run build --workspace=@lifexp/contracts && npm run dev --workspace=@lifexp/api & npm run dev --workspace=@lifexp/web",
+    "build": "npm run build --workspace=@lifexp/contracts && npm run build --workspace=@lifexp/api && npm run build --workspace=@lifexp/web",
     "db:generate": "npm run generate --workspace=packages/db",
     "db:migrate:dev": "npm run migrate:dev --workspace=packages/db",
     "db:migrate:deploy": "npm run migrate:deploy --workspace=packages/db",

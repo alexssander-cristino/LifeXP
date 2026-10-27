@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "npm run generate:prisma && npm run build --workspace=@lifexp/contracts && tsx watch src/index.ts",
     "build": "npm run generate:prisma && tsc",
     "generate:prisma": "npm run generate --workspace=@lifexp/db",
     "start": "node dist/index.js",
